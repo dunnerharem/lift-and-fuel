@@ -38,7 +38,7 @@ nav button.on{color:var(--ac)}
 .pr{background:var(--ac2);color:#fff;font-size:11px;padding:2px 7px;border-radius:99px;margin-left:6px}
 .mu{color:var(--mu);font-size:13px}
 svg{width:100%;height:auto;display:block}
-.hide{display:none}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.ph{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:10px;cursor:pointer;background:var(--in)}nav button{font-size:13px}
+.hide{display:none}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.ph{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:10px;cursor:pointer;background:var(--in)}nav button{font-size:13px}summary{cursor:pointer;list-style:none}summary::-webkit-details-marker{display:none}
 </style>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#e4572e">
@@ -65,7 +65,7 @@ try{PH=JSON.parse(localStorage.getItem(KEY2)||'[]')}catch(e){}
 function savePh(){try{localStorage.setItem(KEY2,JSON.stringify(PH));return true}catch(e){return false}}
 var SPLIT={1:['Lower',['Back Squat','Romanian Deadlift','Leg Press','Seated Leg Curl','Standing Calf Raise']],2:['Upper',['Bench Press','Barbell Row','Overhead Press','Lat Pulldown','Biceps Curl','Triceps Pushdown']],3:['Rest',[]],4:['Legs',['Hack Squat','Walking Lunge','Hip Thrust','Leg Extension','Seated Calf Raise']],5:['Push',['Incline DB Press','Shoulder Press','Cable Fly','Lateral Raise','Triceps Pushdown']],6:['Pull',['Deadlift','Pull-up','Seated Cable Row','Face Pull','Hammer Curl']],0:['Rest',[]]};
 var DAYN=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-var S={food:{},sess:{},weights:[],meas:[],goals:{k:2300,p:170,c:245,f:70}};
+var S={food:{},sess:{},weights:[],meas:[],goals:{k:2300,p:170,c:245,f:70},prof:{age:27,sex:'m',h:173,w:85,act:1.55,goal:'cut',set:false}};
 try{var raw=localStorage.getItem(KEY);if(raw)S=Object.assign(S,JSON.parse(raw))}catch(e){}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 function ymd(d){return d.toLocaleDateString('en-CA')}
@@ -82,6 +82,17 @@ function render(){nav();var a=document.getElementById('app');a.innerHTML='';a.ap
 
 function dateBar(){var d=$('<div class="row" style="margin-bottom:12px"><input type="date" value="'+date+'"></div>');d.firstChild.onchange=function(){if(this.value){date=this.value;dayOv=null;render()}};return d}
 
+var ACT=[[1.2,'Sedentary: desk job, little exercise'],[1.375,'Light: 1-3 workouts a week'],[1.55,'Moderate: 3-5 workouts a week'],[1.725,'Hard: 6-7 workouts a week']],GOALS={cut:['Lose fat (-500 kcal)',-500],keep:['Maintain weight',0],bulk:['Build muscle (+300 kcal)',300]};
+function calc(p){var bmr=10*p.w+6.25*p.h-5*p.age+(p.sex==='m'?5:-161),tdee=bmr*p.act,k=Math.max(tdee+GOALS[p.goal][1],p.sex==='m'?1500:1200),pr=p.w*(p.goal==='cut'?2.2:2),f=k*.25/9,c=(k-pr*4-f*9)/4;return{bmr:Math.round(bmr),tdee:Math.round(tdee),k:Math.round(k/10)*10,p:Math.round(pr),f:Math.round(f),c:Math.max(0,Math.round(c))}}
+function profCard(){
+ var p=S.prof,d=$('<details class="card"'+(p.set?'':' open')+'><summary><b>Your profile and targets</b> <span class="mu">'+(p.set?'Tap to edit':'Set up to get your targets')+'</span></summary><div class="grid3" style="margin-top:10px"><label class="mu">Age<input id="pa" type="number" inputmode="numeric"></label><label class="mu">Sex<select id="ps"><option value="m">Male</option><option value="f">Female</option></select></label><label class="mu">Height (cm)<input id="ph" type="number" inputmode="decimal"></label></div><div class="grid3" style="margin-top:8px;grid-template-columns:1fr 2fr"><label class="mu">Weight (kg)<input id="pw" type="number" step="0.1" inputmode="decimal"></label><label class="mu">Activity<select id="pc">'+ACT.map(function(a){return '<option value="'+a[0]+'">'+a[1]+'</option>'}).join('')+'</select></label></div><label class="mu" style="display:block;margin-top:8px">Goal<select id="pg">'+Object.keys(GOALS).map(function(k){return '<option value="'+k+'">'+GOALS[k][0]+'</option>'}).join('')+'</select></label><div id="pv" style="margin-top:10px"></div><div class="row" style="margin-top:8px"><button>Save and set my targets</button></div><div class="mu" style="margin-top:8px">Estimate using the Mifflin-St Jeor formula. Treat it as a starting point and adjust after 2-3 weeks of tracking your weight.</div></details>');
+ var q=function(i){return d.querySelector(i)};
+ q('#pa').value=p.age;q('#ps').value=p.sex;q('#ph').value=p.h;q('#pw').value=p.w;q('#pc').value=p.act;q('#pg').value=p.goal;
+ function read(){return{age:+q('#pa').value||0,sex:q('#ps').value,h:+q('#ph').value||0,w:+q('#pw').value||0,act:+q('#pc').value,goal:q('#pg').value}}
+ function upd(){var r=read(),pv=q('#pv');if(!r.age||!r.h||!r.w){pv.innerHTML='<div class="mu">Fill in age, height and weight.</div>';return null}var c=calc(r);pv.innerHTML='<div class="item"><span>Resting burn (BMR)</span><b>'+c.bmr+' kcal</b></div><div class="item"><span>Maintenance (TDEE)</span><b>'+c.tdee+' kcal</b></div><div class="item"><span>Your daily target</span><b>'+c.k+' kcal</b></div><div class="item"><span>Protein / Carbs / Fat</span><b>'+c.p+' / '+c.c+' / '+c.f+' g</b></div>';return c}
+ d.addEventListener('input',upd);d.addEventListener('change',upd);upd();
+ q('button').onclick=function(){var c=upd();if(!c)return;S.prof=Object.assign(read(),{set:true});S.goals={k:c.k,p:c.p,c:c.c,f:c.f};save();render()};
+ return d}
 function fuel(){
  var el=$('<div></div>'),items=S.food[date]||[],g=S.goals,t={k:0,p:0,c:0,f:0};
  items.forEach(function(i){t.k+=i.k;t.p+=i.p;t.c+=i.c;t.f+=i.f});
@@ -91,6 +102,7 @@ function fuel(){
  function bar(l,v,tg,cls){var p=Math.min(100,tg?v/tg*100:0);return '<div class="lab"><span>'+l+'</span><span class="mu">'+Math.round(v)+' / '+tg+(l==='Calories'?'':' g')+'</span></div><div class="bar"><i class="'+(v>tg&&l==='Calories'?'over':cls)+'" style="width:'+p+'%"></i></div>'}
  c.innerHTML+=bar('Calories',t.k,g.k,'')+bar('Protein',t.p,g.p,'p')+bar('Carbs',t.c,g.c,'')+bar('Fat',t.f,g.f,'');
  el.appendChild(c);
+ el.appendChild(profCard());
  var f=$('<div class="card"><div class="row" style="margin-bottom:8px"><input id="fn" placeholder="Food (e.g. Chicken rice bowl)"></div><div class="grid4"><input id="fk" type="number" inputmode="decimal" placeholder="kcal"><input id="fp" type="number" inputmode="decimal" placeholder="P g"><input id="fc" type="number" inputmode="decimal" placeholder="C g"><input id="ff" type="number" inputmode="decimal" placeholder="F g"></div><div class="row" style="margin-top:8px"><button id="fa">Add food</button></div></div>');
  f.querySelector('#fa').onclick=function(){var v=function(i){return parseFloat(f.querySelector(i).value)||0};var n=f.querySelector('#fn').value.trim(),k=v('#fk'),p=v('#fp'),cc=v('#fc'),ff=v('#ff');if(!k)k=p*4+cc*4+ff*9;if(!n||!k)return;(S.food[date]=S.food[date]||[]).push({n:n,k:k,p:p,c:cc,f:ff});save();render()};
  el.appendChild(f);
@@ -139,7 +151,7 @@ function prog(){
  var c=$('<div class="card"><div class="lab"><span class="mu">Bodyweight</span><b>'+(cur?cur+' kg':'—')+'</b></div></div>');
  c.insertAdjacentHTML('beforeend',line(ws.slice(-30)));
  var r=$('<div class="row" style="margin-top:10px"><input type="number" step="0.1" inputmode="decimal" placeholder="Today\u2019s weight (kg)"><button>Log</button></div>');
- r.querySelector('button').onclick=function(){var v=parseFloat(r.querySelector('input').value);if(!v)return;S.weights=S.weights.filter(function(q){return q.d!==date});S.weights.push({d:date,w:v});save();render()};
+ r.querySelector('button').onclick=function(){var v=parseFloat(r.querySelector('input').value);if(!v)return;S.weights=S.weights.filter(function(q){return q.d!==date});S.weights.push({d:date,w:v});if(date>=ymd(new Date()))S.prof.w=v;save();render()};
  c.appendChild(r);el.appendChild(c);
  var wk=0,now=new Date();Object.keys(S.sess).forEach(function(d){if((now-new Date(d+'T12:00:00'))/864e5<7&&S.sess[d].ex.some(function(x){return x.sets.length}))wk++});
  var ts=Object.keys(S.sess).length;
