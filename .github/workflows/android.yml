@@ -18,7 +18,13 @@ jobs:
           distribution: temurin
           java-version: 17
       - run: npm install
+      - name: Bundle barcode library
+        run: |
+          f=$(find node_modules/@zxing/library -name 'index.min.js' | head -1)
+          if [ -n "$f" ]; then cp "$f" www/zxing.min.js; fi
       - run: npx cap add android
+      - name: Add camera permission
+        run: sed -i 's#<application#<uses-permission android:name="android.permission.CAMERA" />\n    <application#' android/app/src/main/AndroidManifest.xml
       - run: npx cap sync android
       - name: Build debug APK
         working-directory: android
