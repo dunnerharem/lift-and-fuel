@@ -95,7 +95,7 @@ function lastSets(name){var ds=Object.keys(S.sess).filter(function(d){return d<d
 
 function nav(){var n=document.getElementById('nav');n.innerHTML='';TABS.forEach(function(t){var b=document.createElement('button');b.textContent=t[1];b.className=tab===t[0]?'on':'';b.onclick=function(){tab=t[0];render()};n.appendChild(b)})}
 
-function render(){nav();var a=document.getElementById('app');a.innerHTML='';a.appendChild(tab==='today'?fuel():tab==='train'?train():tab==='lib'?lib():tab==='body'?body():prog())}
+function render(){nav();var a=document.getElementById('app');a.innerHTML='';var wb=workoutBar();if(wb)a.appendChild(wb);a.appendChild(tab==='today'?fuel():tab==='train'?train():tab==='lib'?lib():tab==='body'?body():prog())}
 
 function dateBar(){var d=$('<div class="row" style="margin-bottom:12px"><input type="date" value="'+date+'"></div>');d.firstChild.onchange=function(){if(this.value){date=this.value;dayOv=null;render()}};return d}
 
@@ -214,7 +214,7 @@ function prog(){
  if(!list.length)pc.innerHTML='<div class="mu">Log some sets in Train and your best lifts show up here.</div>';
  list.forEach(function(a){pc.appendChild($('<div class="item"><span>'+esc(a[0])+'</span><b>'+Math.round(toD(a[1])*10)/10+' '+wl()+'</b></div>'))});
  el.appendChild(pc);
- el.appendChild(muscleCard());el.appendChild(exCard());el.appendChild($('<h2>Daily targets</h2>'));
+ el.appendChild(monthCard());el.appendChild(muscleCard());el.appendChild(distCard());el.appendChild(exCard());el.appendChild($('<h2>Daily targets</h2>'));
  var g=S.goals,tg=$('<div class="card"><div class="grid4"><label class="mu">kcal<input id="gk" type="number" value="'+g.k+'"></label><label class="mu">Protein<input id="gp" type="number" value="'+g.p+'"></label><label class="mu">Carbs<input id="gc" type="number" value="'+g.c+'"></label><label class="mu">Fat<input id="gf" type="number" value="'+g.f+'"></label></div><div class="row" style="margin-top:10px"><button class="ghost">Save targets</button></div></div>');
  tg.querySelector('button').onclick=function(){S.goals={k:+tg.querySelector('#gk').value||g.k,p:+tg.querySelector('#gp').value||g.p,c:+tg.querySelector('#gc').value||g.c,f:+tg.querySelector('#gf').value||g.f};save();this.textContent='Saved'};
  el.appendChild(tg);
@@ -252,7 +252,7 @@ LIB.push.apply(LIB,[
 ['Power Clean','Full Body','Barbell','Explosive hip drive, catch at the shoulders.'],['Hang Clean','Full Body','Barbell','Start at the knees, pull and catch fast.'],['Clean and Jerk','Full Body','Barbell','Clean to the shoulders, then drive overhead.'],['Snatch','Full Body','Barbell','Floor to overhead in one smooth pull.'],['Kettlebell Swing','Full Body','Kettlebell','Snap the hips, arms are just hooks.'],['Turkish Get-Up','Full Body','Kettlebell','Slow and controlled, eyes on the weight.'],['Thruster','Full Body','Barbell','Front squat into an overhead press in one move.'],['Burpee','Full Body','Bodyweight','Chest to the floor, jump and clap overhead.'],['Farmer Carry','Full Body','Dumbbell','Heavy, tall posture, short fast steps.'],['Sled Push','Full Body','Sled','Low body angle, drive with the legs.'],['Sled Pull','Full Body','Sled','Walk backward, stay tall, keep tension.'],['Battle Ropes','Full Body','Rope','Alternate waves, hips back, stay braced.'],['Medicine Ball Slam','Full Body','Medicine ball','Reach tall, slam with the whole body.'],['Box Jump','Full Body','Bodyweight','Land softly, stand up fully on the box.'],['Dumbbell Snatch','Full Body','Dumbbell','Pull explosively, punch the weight overhead.'],['Man Maker','Full Body','Dumbbell','Push-up, row each side, then clean and press.']
 ]);
 function unitBar(){var c=$('<div class="chips"><span class="mu" style="align-self:center">Units</span></div>');[['kg','kg / cm'],['lb','lb / in']].forEach(function(u){var b=$('<button class="chip'+((S.unit||'kg')===u[0]?' on':'')+'">'+u[1]+'</button>');b.onclick=function(){S.unit=u[0];save();render()};c.appendChild(b)});return c}
-function startRoutine(r){var ss=S.sess[date]=S.sess[date]||{day:r.name,ex:[]};r.ex.forEach(function(e){if(ss.ex.some(function(x){return x.n===e.n}))return;var pv=lastSets(e.n)||[],sets=[];for(var i=0;i<e.sets;i++){var p=pv[i]||pv[pv.length-1];sets.push({w:p?p.w:0,r:e.r,d:0})}ss.ex.push({n:e.n,sets:sets,tr:e.r,rest:e.rest})});save();render()}
+function startRoutine(r){var ss=S.sess[date]=S.sess[date]||{day:r.name,ex:[]};r.ex.forEach(function(e){if(ss.ex.some(function(x){return x.n===e.n}))return;var pv=lastSets(e.n)||[],sets=[];for(var i=0;i<e.sets;i++){var p=pv[i]||pv[pv.length-1];sets.push({w:p?p.w:0,r:e.r,d:0})}ss.ex.push({n:e.n,sets:sets,tr:e.r,rest:e.rest})});startWorkout(ss,r.name);save();render()}
 function routineEditor(r,isNew){
  var ex=r.ex.map(function(e){return{n:e.n,sets:e.sets,r:e.r,rest:e.rest}}),
  m=$('<div style="position:fixed;inset:0;background:var(--bg);z-index:25;overflow:auto;padding:16px"><div style="max-width:560px;margin:0 auto"><h1>'+(isNew?'New routine':'Edit routine')+'</h1><input id="rn" placeholder="Routine name, e.g. Push day"><label class="mu" style="display:block;margin-top:8px">Day of the week (optional)<select id="rd"><option value="">Any day</option>'+DAYN.map(function(d,i){return '<option value="'+i+'">'+d+'</option>'}).join('')+'</select></label><h2>Exercises</h2><div id="rl"></div><input id="rs" placeholder="Search or type an exercise" style="margin-top:8px" autocomplete="off"><div id="rg"></div><div class="row" style="margin-top:14px"><button id="rv">Save routine</button><button class="ghost" id="rc">Cancel</button>'+(isNew?'':'<button class="ghost" id="rx">Delete</button>')+'</div></div></div>'),
@@ -270,8 +270,8 @@ function routineEditor(r,isNew){
  if(!isNew)q('#rx').onclick=function(){if(this.dataset.c){S.routines=S.routines.filter(function(z){return z.id!==r.id});save();m.remove();render()}else{this.dataset.c=1;this.textContent='Tap again to delete'}};
  list();document.body.appendChild(m)}
 function routineCard(ss,dow){
- var rs=S.routines||[],c=$('<div class="card"><div class="lab"><b>Routines</b><span><button class="chip" data-n>+ New</button> <button class="chip" data-cl>Copy last</button>'+(ss.ex.length?' <button class="chip" data-s>Save session</button>':'')+'</span></div></div>');
- c.querySelector('[data-n]').onclick=function(){routineEditor({name:'',day:'',ex:[]},true)};c.querySelector('[data-cl]').onclick=copyLast;
+ var rs=S.routines||[],c=$('<div class="card"><div class="lab"><b>Routines</b><span><button class="chip" data-n>+ New</button> <button class="chip" data-cl>Copy last</button>'+(S.active?'':' <button class="chip" data-t>Start timer</button>')+(ss.ex.length?' <button class="chip" data-s>Save session</button>':'')+'</span></div></div>');
+ c.querySelector('[data-n]').onclick=function(){routineEditor({name:'',day:'',ex:[]},true)};c.querySelector('[data-cl]').onclick=copyLast;var tb=c.querySelector('[data-t]');if(tb)tb.onclick=function(){S.active={date:date,name:ss.day||'Workout',t0:Date.now()};save();render()};
  var sb=c.querySelector('[data-s]');if(sb)sb.onclick=function(){routineEditor({name:'',day:'',ex:ss.ex.map(function(x){var l=x.sets[x.sets.length-1];return{n:x.n,sets:x.sets.length||3,r:l?l.r:10,rest:x.rest}})},true)};
  if(!rs.length){c.insertAdjacentHTML('beforeend','<div class="mu" style="margin-top:6px">Build a routine once, then start it with one tap. Weights are filled in from your last session.</div>');var ib=$('<button class="ghost" style="margin-top:8px">Add starter routines (Lower, Upper, Legs, Push, Pull)</button>');ib.onclick=function(){S.routines=[1,2,4,5,6].map(function(d,i){return{id:Date.now()+i,name:SPLIT[d][0],day:d,ex:SPLIT[d][1].map(function(n){return{n:n,sets:3,r:10}})}});save();render()};c.appendChild(ib)}
  rs.slice().sort(function(a,b){return (b.day===dow)-(a.day===dow)}).forEach(function(r){
@@ -297,7 +297,7 @@ function typeSel(t){return '<select style="padding:6px 2px;font-size:11px">'+[['
 var RS=[[0,'Off'],[45,'45s'],[60,'60s'],[90,'90s'],[120,'2m'],[180,'3m'],[300,'5m']];
 function restSel(v){return '<select data-rs style="width:auto;padding:3px 4px;font-size:12px">'+RS.map(function(o){return '<option value="'+o[0]+'"'+(o[0]===v?' selected':'')+'>Rest '+o[1]+'</option>'}).join('')+'</select>'}
 function rv(x){return x.rest!==undefined?x.rest:(S.rest===undefined?90:S.rest)}
-function mark(ss){if(!ss.t0)ss.t0=Date.now();ss.t1=Date.now()}
+function mark(ss){if(!ss.t0)ss.t0=Date.now();if(!ss.fin)ss.t1=Date.now()}
 function lastNote(n){var ds=Object.keys(S.sess).filter(function(d){return d<date}).sort().reverse();for(var i=0;i<ds.length;i++){var x=S.sess[ds[i]].ex.filter(function(e){return e.n===n&&e.note})[0];if(x)return x.note}return ''}
 function hint(x,prev){if(!prev||!prev.length)return '';var top=x.tr||12,lo=Math.max(1,top-4),mw=Math.max.apply(0,prev.map(function(s){return s.w}));if(mw<=0)return '';
  var ws=prev.filter(function(s){return s.w===mw}),mr=Math.min.apply(0,ws.map(function(s){return s.r})),g=grp(x.n),inc=(U()?5/LB:2.5)*(g==='Quads'||g==='Hams & Glutes'?2:1);
@@ -311,7 +311,7 @@ function stopRest(){clearInterval(RT.iv);RT.iv=null;if(RB)RB.style.display='none
 function startRest(sec){if(!sec)return;RT.end=Date.now()+sec*1000;rbar().style.display='flex';tick();clearInterval(RT.iv);RT.iv=setInterval(tick,250)}
 function copyLast(){var ds=Object.keys(S.sess).filter(function(d){return d<date&&S.sess[d].ex.some(function(x){return x.sets.some(cnt)})}).sort().reverse(),cu=S.sess[date],nm=cu&&cu.day,pk=ds.filter(function(d){return S.sess[d].day===nm})[0]||ds[0];if(!pk)return;
  var ss=S.sess[date]=S.sess[date]||{day:S.sess[pk].day,ex:[]};S.sess[pk].ex.forEach(function(e){if(ss.ex.some(function(x){return x.n===e.n}))return;ss.ex.push({n:e.n,rest:e.rest,sets:e.sets.filter(function(s){return s.t!=='w'}).map(function(s){return{w:s.w,r:s.r,t:s.t,d:0}})})});save();render()}
-function pack(ph){return JSON.stringify({app:'lift-and-fuel',v:1,t:Date.now(),S:S,photos:ph?PH:[]})}
+function pack(ph){return JSON.stringify({app:'lift-and-fuel',v:1,t:Date.now(),S:Object.assign({},S,{active:null}),photos:ph?PH:[]})}
 function backupCard(){
  var c=$('<div class="card"><b>Backup and restore</b><div class="mu" style="margin:4px 0 8px">Your data lives on this phone only. Save a backup now and then, for example to Google Drive.</div><label class="mu" style="display:flex;align-items:center;gap:8px"><input type="checkbox" style="width:auto"> Include progress photos (bigger file)</label><div class="row" style="margin-top:8px"><button data-d>Save file</button><button class="ghost" data-c>Copy</button><button class="ghost" data-r>Restore</button></div><div class="mu" data-m style="margin-top:6px"></div></div>');
  var q=function(i){return c.querySelector(i)},msg=function(t){q('[data-m]').textContent=t},ph=function(){return q('input').checked};
@@ -449,6 +449,54 @@ function plateModal(x){var PL=U()?[45,35,25,10,5,2.5]:[25,20,15,10,5,2.5,1.25],b
   PL.forEach(function(p){var n=Math.floor(rem/p+1e-9);if(n>0){out.push(n+' \u00d7 '+p);rem-=n*p}});var ld=t-2*rem;
   q('#pr2').innerHTML='<div class="item"><span>Per side</span><b>'+(out.join(' + ')||'none')+'</b></div><div class="item"><span>Total loaded</span><b>'+(Math.round(ld*100)/100)+' '+wl()+'</b></div>'+(rem>.01?'<div class="mu">Closest with these plates, '+(Math.round(rem*200)/100)+' '+wl()+' short.</div>':'')}
  q('#pw2').oninput=upd;q('#pb').onchange=upd;upd();q('[data-x]').onclick=function(){m.remove()}}
+
+var DR='30',RM=null;
+var DCOL={Chest:'#e4572e',Back:'#2a7f62',Shoulders:'#3b82c4',Arms:'#c9a227',Quads:'#8e5bd6','Hams & Glutes':'#d6457f',Calves:'#5aa9a0',Core:'#8a8f98','Full Body':'#b5651d',Other:'#6c8e3b'};
+function fmtDur(m){m=Math.round(m);return m>=60?Math.floor(m/60)+' h '+('0'+m%60).slice(-2)+' min':m+' min'}
+function sessStats(from,to){var r={w:0,sets:0,vol:0,reps:0,dur:0,dn:0,prs:0,mus:{}};
+ Object.keys(S.sess).sort().forEach(function(d){if(d<from||d>to)return;var s=S.sess[d],has=false;
+  s.ex.forEach(function(x){var k=x.sets.filter(cnt);if(!k.length)return;has=true;r.sets+=k.length;k.forEach(function(z){r.vol+=z.w*z.r;r.reps+=z.r});var g=grp(x.n)||'Other';r.mus[g]=(r.mus[g]||0)+k.length;var bs=Math.max.apply(0,k.map(function(z){return e1rm(z.w,z.r)})),pv=best(x.n,d);if(pv>0&&bs>pv)r.prs++});
+  if(has){r.w++;if(s.t0&&s.t1&&s.t1>s.t0){var m=(s.t1-s.t0)/60000;if(m<360){r.dur+=m;r.dn++}}}});
+ return r}
+function distCard(){
+ var c=$('<div class="card"><div class="lab"><b>Muscle distribution</b><span class="mu">share of working sets</span></div><div class="chips" style="margin:8px 0"></div></div>'),ch=c.children[1];
+ [['30','30 days'],['90','3 months'],['180','6 months'],['365','1 year'],['all','All time']].forEach(function(o){var b=$('<button class="chip'+(DR===o[0]?' on':'')+'">'+o[1]+'</button>');b.onclick=function(){DR=o[0];render()};ch.appendChild(b)});
+ var from=DR==='all'?'0000-00-00':ago(+DR-1),r=sessStats(from,'9999-99-99'),tot=0,g;for(g in r.mus)tot+=r.mus[g];
+ if(!tot){c.insertAdjacentHTML('beforeend','<div class="mu">No sets logged in this period.</div>');return c}
+ var order=Object.keys(r.mus).sort(function(a,b){return r.mus[b]-r.mus[a]}),off=0,C=2*Math.PI*40,arcs='';
+ order.forEach(function(k){var len=r.mus[k]/tot*C;arcs+='<circle cx="60" cy="60" r="40" fill="none" stroke="'+(DCOL[k]||'#888')+'" stroke-width="18" stroke-dasharray="'+len.toFixed(2)+' '+(C-len).toFixed(2)+'" stroke-dashoffset="'+(-off).toFixed(2)+'" transform="rotate(-90 60 60)"/>';off+=len});
+ c.insertAdjacentHTML('beforeend','<div style="display:flex;gap:14px;align-items:center"><svg viewBox="0 0 120 120" width="130" height="130" style="flex:none">'+arcs+'<text x="60" y="58" text-anchor="middle" font-size="18" font-weight="700" fill="var(--tx)">'+tot+'</text><text x="60" y="73" text-anchor="middle" font-size="9" fill="var(--mu)">sets</text></svg><div style="flex:1;min-width:0">'+order.map(function(k){return '<div class="lab" style="margin:3px 0"><span><i style="display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;background:'+(DCOL[k]||'#888')+'"></i>'+k+'</span><span class="mu">'+r.mus[k]+' \u00b7 '+Math.round(r.mus[k]/tot*100)+'%</span></div>'}).join('')+'</div></div>');
+ return c}
+function monthCard(){
+ var now=ymd(new Date()).slice(0,7);RM=RM||now;
+ var y=+RM.slice(0,4),m=+RM.slice(5,7),pm=m===1?(y-1)+'-12':y+'-'+('0'+(m-1)).slice(-2),nm=m===12?(y+1)+'-01':y+'-'+('0'+(m+1)).slice(-2),
+ A=sessStats(RM+'-01',RM+'-31'),B=sessStats(pm+'-01',pm+'-31'),
+ c=$('<div class="card"><div class="lab"><b>Monthly report</b></div><div class="lab" style="margin:8px 0"><button class="chip" data-p>\u25c0</button><span>'+new Date(RM+'-01T12:00:00').toLocaleDateString(undefined,{month:'long',year:'numeric'})+'</span><button class="chip" data-n>\u25b6</button></div></div>');
+ c.querySelector('[data-p]').onclick=function(){RM=pm;render()};
+ var nb=c.querySelector('[data-n]');if(RM>=now)nb.style.opacity='.35';else nb.onclick=function(){RM=nm;render()};
+ if(!A.w){c.insertAdjacentHTML('beforeend','<div class="mu">No workouts logged this month.</div>');return c}
+ var df=function(a,b,f){return B.w?(a-b>0?'+':'')+f(a-b):''},top=Object.keys(A.mus).sort(function(a,b){return A.mus[b]-A.mus[a]})[0],
+ vol=function(v){return Math.round(toD(v)).toLocaleString()+' '+wl()},
+ L=[['Workouts',String(A.w),df(A.w,B.w,String)],
+  ['Total duration',A.dn?fmtDur(A.dur):'not timed',A.dn&&A.dn<A.w?A.dn+' of '+A.w+' timed':''],
+  ['Average workout',A.dn?fmtDur(A.dur/A.dn):'-',''],
+  ['Volume',vol(A.vol),df(A.vol,B.vol,function(v){return Math.round(toD(v)).toLocaleString()})],
+  ['Working sets',String(A.sets),df(A.sets,B.sets,String)],
+  ['Total reps',String(A.reps),''],
+  ['New personal bests',String(A.prs),''],
+  ['Most trained',top?top+' ('+A.mus[top]+' sets)':'-','']];
+ c.insertAdjacentHTML('beforeend',L.map(function(l){return '<div class="item"><span>'+l[0]+'</span><span><b>'+l[1]+'</b> <span class="mu">'+l[2]+'</span></span></div>'}).join('')+(B.w?'<div class="mu" style="margin-top:6px">Changes compare with the previous month.</div>':''));
+ var b=$('<button class="ghost" style="margin-top:8px">Copy report</button>');b.onclick=function(){var txt='Monthly report '+RM+'\n'+L.map(function(l){return l[0]+': '+l[1]+(l[2]?' ('+l[2]+')':'')}).join('\n');navigator.clipboard.writeText(txt).then(function(){b.textContent='Copied'}).catch(function(){b.textContent='Could not copy'})};c.appendChild(b);return c}
+
+function startWorkout(ss,name){if(!S.active)S.active={date:date,name:name||ss.day||'Workout',t0:Date.now()};if(S.active.date===date){ss.t0=S.active.t0;delete ss.fin}}
+function finishWorkout(){var a=S.active;if(!a)return;var ss=S.sess[a.date];if(ss&&ss.ex.length){ss.t0=a.t0;ss.t1=Date.now();ss.fin=true}S.active=null;save();render()}
+function fmtSW(ms){var s=Math.max(0,Math.floor(ms/1000)),h=Math.floor(s/3600),m=Math.floor(s%3600/60);return (h?h+':'+('0'+m).slice(-2):m)+':'+('0'+s%60).slice(-2)}
+function workoutBar(){var a=S.active;if(!a)return null;
+ var b=$('<div style="position:sticky;top:0;z-index:12;background:var(--ac2);color:#fff;border-radius:12px;padding:8px 12px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:8px"><span><b id="wsw">'+fmtSW(Date.now()-a.t0)+'</b> <span style="opacity:.85">'+esc(a.name)+'</span></span><span><button class="ghost" data-f>Finish</button> <button class="ghost" data-d>Discard</button></span></div>');
+ function two(btn,label,fn){btn.onclick=function(){if(this.dataset.c){fn();return}this.dataset.c=1;this.textContent=label;var x=this,o=this.getAttribute('data-o');setTimeout(function(){x.dataset.c='';x.textContent=o},4000)}}
+ var f=b.querySelector('[data-f]'),d=b.querySelector('[data-d]');f.setAttribute('data-o','Finish');d.setAttribute('data-o','Discard');
+ two(f,'Tap again to finish',finishWorkout);two(d,'Sure?',function(){S.active=null;save();render()});return b}
+setInterval(function(){var e=document.getElementById('wsw');if(e&&S.active)e.textContent=fmtSW(Date.now()-S.active.t0)},1000);
 
 function lib(){
  var el=$('<div></div>');el.appendChild($('<h1>Library</h1>'));el.appendChild($('<div class="sub">Browse exercises and add them to the session for the selected date.</div>'));
