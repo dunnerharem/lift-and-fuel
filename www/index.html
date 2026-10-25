@@ -160,16 +160,16 @@ function addCard(){
   var fi=document.createElement('input');fi.type='file';fi.accept='image/*';fi.onchange=function(){if(!fi.files[0])return;msg('Estimating from photo...');shrink(fi.files[0],function(u){ai(k,u.split(',')[1]).then(function(o){pick({n:o.name||'Meal',s:'estimated portion',k:+o.kcal||0,p:+o.p||0,c:+o.c||0,f:+o.f||0});msg('AI estimate. Check it before adding.')}).catch(function(e){msg('Photo estimate failed: '+e.message+' (needs internet and a valid key; not available in the claude.ai preview)')})})};fi.click()};
  return c}
 function train(){
- var el=$('<div></div>'),dow=new Date(date+'T12:00:00').getDay(),di=dayOv===null?dow:dayOv,sp=SPLIT[di];
+ var el=$('<div></div>'),dow=new Date(date+'T12:00:00').getDay(),sp=dayOv===null?SPLIT[dow]:[dayOv,FOCUS[dayOv]||[]];
  el.appendChild($('<h1>Train</h1>'));el.appendChild($('<div class="sub">Today is '+sp[0]+' day. Tap an exercise to add it.</div>'));el.appendChild(dateBar());
- var ch=$('<div class="chips"></div>');[1,2,4,5,6].forEach(function(d){var b=$('<button class="chip'+(d===di?' on':'')+'">'+SPLIT[d][0]+'</button>');b.onclick=function(){dayOv=d;render()};ch.appendChild(b)});el.appendChild(ch);
+ var ch=$('<div class="chips"></div>');Object.keys(FOCUS).concat(S.cfocus||[]).forEach(function(nm){var b=$('<button class="chip'+(nm===sp[0]?' on':'')+'">'+esc(nm)+'</button>');b.onclick=function(){dayOv=nm;render()};ch.appendChild(b)});
+ var cb=$('<button class="chip">+ Custom</button>');cb.onclick=function(){askName('Name this workout type','',function(n){S.cfocus=S.cfocus||[];if(!FOCUS[n]&&S.cfocus.indexOf(n)<0)S.cfocus.push(n);dayOv=n;save();render()})};ch.appendChild(cb);el.appendChild(ch);
  var ss=S.sess[date]=S.sess[date]||{day:sp[0],ex:[]};ss.day=sp[0];
  var have=ss.ex.map(function(x){return x.n});el.appendChild(unitBar());el.appendChild(routineCard(ss,dow));
  var pick=$('<div class="chips"></div>');
  sp[1].filter(function(n){return have.indexOf(n)<0}).forEach(function(n){var b=$('<button class="chip">+ '+n+'</button>');b.onclick=function(){S.sess[date]=ss;ss.ex.push({n:n,sets:[]});save();render()};pick.appendChild(b)});
  el.appendChild(pick);
- var cu=$('<div class="row" style="margin-bottom:12px"><input id="cx" placeholder="Custom exercise"><button class="ghost">Add</button></div>');
- cu.querySelector('button').onclick=function(){var n=cu.querySelector('input').value.trim();if(n&&have.indexOf(n)<0){S.sess[date]=ss;ss.ex.push({n:n,sets:[]});save();render()}};el.appendChild(cu);
+ el.appendChild(exSearch(ss,have));
  var vol=0;
  ss.ex.forEach(function(x,xi){
   var prev=lastSets(x.n),pb=best(x.n,date);
@@ -255,9 +255,9 @@ function unitBar(){var c=$('<div class="chips"><span class="mu" style="align-sel
 function startRoutine(r){var ss=S.sess[date]=S.sess[date]||{day:r.name,ex:[]};r.ex.forEach(function(e){if(ss.ex.some(function(x){return x.n===e.n}))return;var pv=lastSets(e.n)||[],sets=[];for(var i=0;i<e.sets;i++){var p=pv[i]||pv[pv.length-1];sets.push({w:p?p.w:0,r:e.r,d:0})}ss.ex.push({n:e.n,sets:sets,tr:e.r,rest:e.rest})});startWorkout(ss,r.name);save();render()}
 function routineEditor(r,isNew){
  var ex=r.ex.map(function(e){return{n:e.n,sets:e.sets,r:e.r,rest:e.rest}}),
- m=$('<div style="position:fixed;inset:0;background:var(--bg);z-index:25;overflow:auto;padding:16px"><div style="max-width:560px;margin:0 auto"><h1>'+(isNew?'New routine':'Edit routine')+'</h1><input id="rn" placeholder="Routine name, e.g. Push day"><label class="mu" style="display:block;margin-top:8px">Day of the week (optional)<select id="rd"><option value="">Any day</option>'+DAYN.map(function(d,i){return '<option value="'+i+'">'+d+'</option>'}).join('')+'</select></label><h2>Exercises</h2><div id="rl"></div><input id="rs" placeholder="Search or type an exercise" style="margin-top:8px" autocomplete="off"><div id="rg"></div><div class="row" style="margin-top:14px"><button id="rv">Save routine</button><button class="ghost" id="rc">Cancel</button>'+(isNew?'':'<button class="ghost" id="rx">Delete</button>')+'</div></div></div>'),
+ m=$('<div style="position:fixed;inset:0;background:var(--bg);z-index:25;overflow:auto;padding:16px"><div style="max-width:560px;margin:0 auto"><h1>'+(isNew?'New routine':'Edit routine')+'</h1><input id="rn" placeholder="Routine name, e.g. Push day"><select id="rt" style="margin-top:8px"><option value="">Start from a template (optional)</option>'+Object.keys(FOCUS).map(function(k){return '<option>'+k+'</option>'}).join('')+'</select><label class="mu" style="display:block;margin-top:8px">Day of the week (optional)<select id="rd"><option value="">Any day</option>'+DAYN.map(function(d,i){return '<option value="'+i+'">'+d+'</option>'}).join('')+'</select></label><h2>Exercises</h2><div id="rl"></div><input id="rs" placeholder="Search or type an exercise" style="margin-top:8px" autocomplete="off"><div id="rg"></div><div class="row" style="margin-top:14px"><button id="rv">Save routine</button><button class="ghost" id="rc">Cancel</button>'+(isNew?'':'<button class="ghost" id="rx">Delete</button>')+'</div></div></div>'),
  q=function(i){return m.querySelector(i)};
- q('#rn').value=r.name||'';q('#rd').value=r.day===undefined?'':r.day;
+ q('#rn').value=r.name||'';q('#rd').value=r.day===undefined?'':r.day;q('#rt').onchange=function(){var f=FOCUS[this.value];if(f){f.forEach(function(n){if(!ex.some(function(e){return e.n===n}))ex.push({n:n,sets:3,r:10})});if(!q('#rn').value.trim())q('#rn').value=this.value;list()}this.value=''};
  function list(){var l=q('#rl');l.innerHTML='';if(!ex.length){l.innerHTML='<div class="mu">No exercises yet. Search below to add some.</div>';return}
   l.appendChild($('<div class="mu" style="display:grid;grid-template-columns:1fr 52px 52px 84px;gap:6px"><span>Exercise</span><span>Sets</span><span>Reps</span><span></span></div>'));
   ex.forEach(function(e,i){var row=$('<div style="display:grid;grid-template-columns:1fr 52px 52px 84px;gap:6px;align-items:center;margin-top:6px"><span>'+esc(e.n)+'</span><input type="number" inputmode="numeric" value="'+e.sets+'"><input type="number" inputmode="numeric" value="'+e.r+'"><span><button class="x" data-u>\u2191</button><button class="x" data-w>\u2193</button><button class="x" data-x>\u00d7</button></span></div>'),ins=row.querySelectorAll('input');ins[0].onchange=function(){e.sets=Math.max(1,parseInt(this.value)||1)};ins[1].onchange=function(){e.r=Math.max(1,parseInt(this.value)||1)};row.querySelector('[data-x]').onclick=function(){ex.splice(i,1);list()};row.querySelector('[data-u]').onclick=function(){if(i>0){var t=ex[i-1];ex[i-1]=ex[i];ex[i]=t;list()}};row.querySelector('[data-w]').onclick=function(){if(i<ex.length-1){var t=ex[i+1];ex[i+1]=ex[i];ex[i]=t;list()}};l.appendChild(row)})}
@@ -416,15 +416,15 @@ function goalCard(){var c=$('<div class="card"><div class="lab"><b>Goal weight</
   if(sl&&Math.abs(sl.s*7)>=0.05&&sl.s*diff>0){var days=Math.round(diff/sl.s),dt=new Date();dt.setDate(dt.getDate()+days);msg+=' At '+Math.abs(sl.s*7*(U()?LB:1)).toFixed(2)+' '+wl()+'/week you reach it around '+dt.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})+'.'}
   else if(sl)msg+=' Your trend is not moving toward the goal right now.';else msg+=' Log 3+ weigh-ins over a couple of weeks for a projected date.'}
  c.appendChild(r);c.insertAdjacentHTML('beforeend','<div class="mu" style="margin-top:6px">'+(msg||'Set a goal weight to see your projected date.')+'</div>');return c}
-function wkStats(a,b){var ds=[],i;for(i=a;i>=b;i--)ds.push(ago(i));var kc=[],pr=[],wk=0,vol=0,prs=0,wts=[];
- ds.forEach(function(d){var t=dayTot(d);if(t.n){kc.push(t.k);pr.push(t.p)}var s=S.sess[d];if(s&&s.ex.some(function(x){return x.sets.some(cnt)})){wk++;s.ex.forEach(function(x){var k=x.sets.filter(cnt);k.forEach(function(z){vol+=z.w*z.r});if(k.length){var bs=Math.max.apply(0,k.map(function(z){return e1rm(z.w,z.r)})),pv=best(x.n,d);if(pv>0&&bs>pv)prs++}})}});
+function wkStats(a,b){var ds=[],i;for(i=a;i>=b;i--)ds.push(ago(i));var kc=[],pr=[],wk=0,vol=0,prs=0,dur=0,dn=0,wts=[];
+ ds.forEach(function(d){var t=dayTot(d);if(t.n){kc.push(t.k);pr.push(t.p)}var s=S.sess[d];if(s&&s.ex.some(function(x){return x.sets.some(cnt)})){wk++;if(s.t0&&s.t1&&s.t1>s.t0){var mm=(s.t1-s.t0)/60000;if(mm<360){dur+=mm;dn++}}s.ex.forEach(function(x){var k=x.sets.filter(cnt);k.forEach(function(z){vol+=z.w*z.r});if(k.length){var bs=Math.max.apply(0,k.map(function(z){return e1rm(z.w,z.r)})),pv=best(x.n,d);if(pv>0&&bs>pv)prs++}})}});
  S.weights.forEach(function(q){if(ds.indexOf(q.d)>=0)wts.push(q.w)});
- return{kc:mean(kc),pr:mean(pr),days:kc.length,wk:wk,vol:vol,prs:prs,w:mean(wts),wn:wts.length}}
+ return{kc:mean(kc),pr:mean(pr),days:kc.length,wk:wk,vol:vol,prs:prs,dur:dur,dn:dn,w:mean(wts),wn:wts.length}}
 function checkinCard(){var A=wkStats(6,0),B=wkStats(13,7),c=$('<div class="card"><div class="lab"><b>Weekly check-in</b><span class="mu">last 7 days vs the 7 before</span></div></div>'),fk=U()?LB:1,sg=function(n,dp){return (n>0?'+':'')+n.toFixed(dp||0)},L=[];
  L.push(['Average weight',A.wn?(A.w*fk).toFixed(1)+' '+wl():'no weigh-ins',A.wn&&B.wn?sg((A.w-B.w)*fk,1)+' '+wl():'']);
  L.push(['Average calories',A.days?Math.round(A.kc)+' kcal':'no food logged',A.days&&B.days?sg(A.kc-B.kc)+' kcal':'']);
  L.push(['Average protein',A.days?Math.round(A.pr)+' g':'none',A.days&&B.days?sg(A.pr-B.pr)+' g':'']);
- L.push(['Workouts',String(A.wk),B.wk?'vs '+B.wk:'']);
+ L.push(['Workouts',String(A.wk),B.wk?'vs '+B.wk:'']);L.push(['Total time',A.dn?fmtDur(A.dur):'not timed',A.dn&&B.dn?sg(A.dur-B.dur)+' min':A.dn&&A.dn<A.wk?A.dn+' of '+A.wk+' timed':'']);L.push(['Average workout',A.dn?fmtDur(A.dur/A.dn):'-','']);
  L.push(['Volume',Math.round(toD(A.vol)).toLocaleString()+' '+wl(),B.vol?'vs '+Math.round(toD(B.vol)).toLocaleString():'']);
  L.push(['New personal bests',String(A.prs),'']);
  c.insertAdjacentHTML('beforeend',L.map(function(l){return '<div class="item"><span>'+l[0]+'</span><span><b>'+l[1]+'</b> <span class="mu">'+l[2]+'</span></span></div>'}).join(''));
@@ -453,10 +453,10 @@ function plateModal(x){var PL=U()?[45,35,25,10,5,2.5]:[25,20,15,10,5,2.5,1.25],b
 var DR='30',RM=null;
 var DCOL={Chest:'#e4572e',Back:'#2a7f62',Shoulders:'#3b82c4',Arms:'#c9a227',Quads:'#8e5bd6','Hams & Glutes':'#d6457f',Calves:'#5aa9a0',Core:'#8a8f98','Full Body':'#b5651d',Other:'#6c8e3b'};
 function fmtDur(m){m=Math.round(m);return m>=60?Math.floor(m/60)+' h '+('0'+m%60).slice(-2)+' min':m+' min'}
-function sessStats(from,to){var r={w:0,sets:0,vol:0,reps:0,dur:0,dn:0,prs:0,mus:{}};
- Object.keys(S.sess).sort().forEach(function(d){if(d<from||d>to)return;var s=S.sess[d],has=false;
-  s.ex.forEach(function(x){var k=x.sets.filter(cnt);if(!k.length)return;has=true;r.sets+=k.length;k.forEach(function(z){r.vol+=z.w*z.r;r.reps+=z.r});var g=grp(x.n)||'Other';r.mus[g]=(r.mus[g]||0)+k.length;var bs=Math.max.apply(0,k.map(function(z){return e1rm(z.w,z.r)})),pv=best(x.n,d);if(pv>0&&bs>pv)r.prs++});
-  if(has){r.w++;if(s.t0&&s.t1&&s.t1>s.t0){var m=(s.t1-s.t0)/60000;if(m<360){r.dur+=m;r.dn++}}}});
+function sessStats(from,to){var r={w:0,sets:0,vol:0,reps:0,dur:0,dn:0,prs:0,mus:{},list:[]};
+ Object.keys(S.sess).sort().forEach(function(d){if(d<from||d>to)return;var s=S.sess[d],has=false,qs=0,qv=0;
+  s.ex.forEach(function(x){var k=x.sets.filter(cnt);if(!k.length)return;has=true;r.sets+=k.length;qs+=k.length;k.forEach(function(z){r.vol+=z.w*z.r;qv+=z.w*z.r;r.reps+=z.r});var g=grp(x.n)||'Other';r.mus[g]=(r.mus[g]||0)+k.length;var bs=Math.max.apply(0,k.map(function(z){return e1rm(z.w,z.r)})),pv=best(x.n,d);if(pv>0&&bs>pv)r.prs++});
+  if(has){r.w++;var mn=0;if(s.t0&&s.t1&&s.t1>s.t0){var m=(s.t1-s.t0)/60000;if(m<360){r.dur+=m;r.dn++;mn=m}}r.list.push({d:d,n:s.rn||s.day,sets:qs,vol:qv,min:mn})}});
  return r}
 function distCard(){
  var c=$('<div class="card"><div class="lab"><b>Muscle distribution</b><span class="mu">share of working sets</span></div><div class="chips" style="margin:8px 0"></div></div>'),ch=c.children[1];
@@ -486,9 +486,9 @@ function monthCard(){
   ['New personal bests',String(A.prs),''],
   ['Most trained',top?top+' ('+A.mus[top]+' sets)':'-','']];
  c.insertAdjacentHTML('beforeend',L.map(function(l){return '<div class="item"><span>'+l[0]+'</span><span><b>'+l[1]+'</b> <span class="mu">'+l[2]+'</span></span></div>'}).join('')+(B.w?'<div class="mu" style="margin-top:6px">Changes compare with the previous month.</div>':''));
- var b=$('<button class="ghost" style="margin-top:8px">Copy report</button>');b.onclick=function(){var txt='Monthly report '+RM+'\n'+L.map(function(l){return l[0]+': '+l[1]+(l[2]?' ('+l[2]+')':'')}).join('\n');navigator.clipboard.writeText(txt).then(function(){b.textContent='Copied'}).catch(function(){b.textContent='Could not copy'})};c.appendChild(b);return c}
+ c.insertAdjacentHTML('beforeend','<div class="lab" style="margin:14px 0 4px"><b>Workouts</b><span class="mu">time, sets, volume</span></div>'+A.list.map(function(w){return '<div class="item"><span>'+new Date(w.d+'T12:00:00').toLocaleDateString(undefined,{month:'short',day:'numeric'})+' \u00b7 '+esc(w.n||'Workout')+'</span><span><b>'+(w.min?fmtDur(w.min):'not timed')+'</b> <span class="mu">'+w.sets+' sets \u00b7 '+vol(w.vol)+'</span></span></div>'}).join(''));var b=$('<button class="ghost" style="margin-top:8px">Copy report</button>');b.onclick=function(){var txt='Monthly report '+RM+'\n'+L.map(function(l){return l[0]+': '+l[1]+(l[2]?' ('+l[2]+')':'')}).join('\n')+'\n\nWorkouts\n'+A.list.map(function(w){return w.d+' '+(w.n||'Workout')+': '+(w.min?fmtDur(w.min):'not timed')+', '+w.sets+' sets'}).join('\n');navigator.clipboard.writeText(txt).then(function(){b.textContent='Copied'}).catch(function(){b.textContent='Could not copy'})};c.appendChild(b);return c}
 
-function startWorkout(ss,name){if(!S.active)S.active={date:date,name:name||ss.day||'Workout',t0:Date.now()};if(S.active.date===date){ss.t0=S.active.t0;delete ss.fin}}
+function startWorkout(ss,name){ss.rn=name||ss.rn;if(!S.active)S.active={date:date,name:name||ss.day||'Workout',t0:Date.now()};if(S.active.date===date){ss.t0=S.active.t0;delete ss.fin}}
 function finishWorkout(){var a=S.active;if(!a)return;var ss=S.sess[a.date];if(ss&&ss.ex.length){ss.t0=a.t0;ss.t1=Date.now();ss.fin=true}S.active=null;save();render()}
 function fmtSW(ms){var s=Math.max(0,Math.floor(ms/1000)),h=Math.floor(s/3600),m=Math.floor(s%3600/60);return (h?h+':'+('0'+m).slice(-2):m)+':'+('0'+s%60).slice(-2)}
 function workoutBar(){var a=S.active;if(!a)return null;
@@ -497,6 +497,16 @@ function workoutBar(){var a=S.active;if(!a)return null;
  var f=b.querySelector('[data-f]'),d=b.querySelector('[data-d]');f.setAttribute('data-o','Finish');d.setAttribute('data-o','Discard');
  two(f,'Tap again to finish',finishWorkout);two(d,'Sure?',function(){S.active=null;save();render()});return b}
 setInterval(function(){var e=document.getElementById('wsw');if(e&&S.active)e.textContent=fmtSW(Date.now()-S.active.t0)},1000);
+
+var FOCUS={Lower:['Back Squat','Romanian Deadlift','Leg Press','Seated Leg Curl','Standing Calf Raise'],Upper:['Bench Press','Barbell Row','Overhead Press','Lat Pulldown','Biceps Curl','Triceps Pushdown'],Legs:['Hack Squat','Walking Lunge','Hip Thrust','Leg Extension','Seated Calf Raise'],Push:['Incline DB Press','Shoulder Press','Cable Fly','Lateral Raise','Triceps Pushdown'],Pull:['Deadlift','Pull-up','Seated Cable Row','Face Pull','Hammer Curl'],
+'Full Body':['Back Squat','Bench Press','Barbell Row','Overhead Press','Romanian Deadlift','Plank'],Chest:['Bench Press','Incline DB Press','Cable Fly','Pec Deck','Push-up'],Back:['Deadlift','Barbell Row','Lat Pulldown','Seated Cable Row','Face Pull'],Shoulders:['Overhead Press','Lateral Raise','Rear Delt Fly','Arnold Press','Face Pull'],Arms:['Barbell Curl','Hammer Curl','Skull Crusher','Triceps Pushdown','Preacher Curl'],
+'Chest & Triceps':['Bench Press','Incline DB Press','Cable Fly','Triceps Pushdown','Overhead Triceps Extension'],'Back & Biceps':['Pull-up','Barbell Row','Seated Cable Row','Barbell Curl','Hammer Curl'],'Shoulders & Arms':['Overhead Press','Lateral Raise','Biceps Curl','Triceps Pushdown','Rear Delt Fly'],Quads:['Back Squat','Hack Squat','Leg Extension','Walking Lunge','Leg Press'],'Glutes & Hams':['Hip Thrust','Romanian Deadlift','Seated Leg Curl','Cable Kickback','Glute Bridge'],Core:['Hanging Leg Raise','Cable Crunch','Ab Wheel Rollout','Plank','Russian Twist']};
+function exSearch(ss,have){var w=$('<div style="margin-bottom:12px"><div class="row"><input placeholder="Search the library or add your own" autocomplete="off"><button class="ghost">Add</button></div><div></div></div>'),inp=w.querySelector('input'),box=w.children[1];
+ function add(n){n=n.trim();if(!n||have.indexOf(n)>=0)return;S.sess[date]=ss;ss.ex.push({n:n,sets:[]});save();render()}
+ inp.oninput=function(){box.innerHTML='';var t=this.value.trim().toLowerCase().split(' ').filter(Boolean);if(!t.length)return;
+  LIB.filter(function(x){var n=(x[0]+' '+x[1]+' '+x[2]).toLowerCase();return have.indexOf(x[0])<0&&t.every(function(q){return n.indexOf(q)>=0})}).slice(0,8).forEach(function(x){var r=$('<div class="item" style="cursor:pointer"><span>'+esc(x[0])+' <span class="mu">'+esc(x[1])+'</span></span><b>+</b></div>');r.onclick=function(){add(x[0])};box.appendChild(r)});
+  var cu=$('<div class="item" style="cursor:pointer"><span>Add "'+esc(this.value.trim())+'" as custom</span><b>+</b></div>');cu.onclick=function(){add(inp.value)};box.appendChild(cu)};
+ w.querySelector('button').onclick=function(){add(inp.value)};return w}
 
 function lib(){
  var el=$('<div></div>');el.appendChild($('<h1>Library</h1>'));el.appendChild($('<div class="sub">Browse exercises and add them to the session for the selected date.</div>'));
