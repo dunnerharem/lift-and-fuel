@@ -1,5 +1,11 @@
 {
   "appId": "com.liftfuel.app",
   "appName": "Lift & Fuel",
-  "webDir": "www"
+  "webDir": "www",
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_rest",
+      "iconColor": "#E4572E"
+    }
+  }
 }
