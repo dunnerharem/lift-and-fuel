@@ -23,8 +23,13 @@ jobs:
           f=$(find node_modules/@zxing/library -name 'index.min.js' | head -1)
           if [ -n "$f" ]; then cp "$f" www/zxing.min.js; fi
       - run: npx cap add android
-      - name: Add camera permission
-        run: sed -i 's#<application#<uses-permission android:name="android.permission.CAMERA" />\n    <application#' android/app/src/main/AndroidManifest.xml
+      - name: Add permissions
+        run: |
+          sed -i 's#<application#<uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <uses-permission android:name="android.permission.VIBRATE" />\n    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />\n    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />\n    <application#' android/app/src/main/AndroidManifest.xml
+      - name: Add notification icon
+        run: |
+          mkdir -p android/app/src/main/res/drawable
+          cp resources/ic_stat_rest.png android/app/src/main/res/drawable/ic_stat_rest.png
       - run: npx cap sync android
       - name: Build debug APK
         working-directory: android
