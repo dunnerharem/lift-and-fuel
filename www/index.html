@@ -178,12 +178,12 @@ function train(){
   c.querySelector('[data-up]').onclick=function(){if(xi>0){var t=ss.ex[xi-1];ss.ex[xi-1]=ss.ex[xi];ss.ex[xi]=t;save();render()}};c.querySelector('[data-dn]').onclick=function(){if(xi<ss.ex.length-1){var t=ss.ex[xi+1];ss.ex[xi+1]=ss.ex[xi];ss.ex[xi]=t;save();render()}};
   c.querySelector('[data-rm]').onclick=function(){ss.ex.splice(xi,1);save();render()};
   x.sets.forEach(function(s,si){if(cnt(s))vol+=s.w*s.r;var isPr=cnt(s)&&e1rm(s.w,s.r)>pb&&pb>0;var r=$('<div class="set"><button class="chip'+(dn(s)?' on':'')+'" style="padding:5px 0">'+(dn(s)?'\u2713':(si+1))+'</button><input type="number" inputmode="decimal" value="'+toD(s.w)+'"><input type="number" inputmode="numeric" value="'+s.r+'">'+typeSel(s.t)+'<button class="x">×</button></div>');
-   var ins=r.querySelectorAll('input');r.querySelector('select').onchange=function(){s.t=this.value;save();render()};r.firstChild.onclick=function(){var nd=!dn(s);s.d=nd?1:0;if(nd){mark(ss);startRest(rv(x))}save();render()};ins[0].onchange=function(){s.w=toK(parseFloat(this.value)||0);save();render()};ins[1].onchange=function(){s.r=parseInt(this.value)||0;save();render()};
+   var ins=r.querySelectorAll('input');r.querySelector('select').onchange=function(){s.t=this.value;save();render()};r.firstChild.onclick=function(){var nd=!dn(s);s.d=nd?1:0;if(nd){mark(ss);startRest(rv(x),x.n)}save();render()};ins[0].onchange=function(){s.w=toK(parseFloat(this.value)||0);save();render()};ins[1].onchange=function(){s.r=parseInt(this.value)||0;save();render()};
    r.querySelector('.x').onclick=function(){x.sets.splice(si,1);save();render()};
    if(isPr){r.firstChild.textContent='PR';r.firstChild.style.background='var(--ac2)';r.firstChild.style.color='#fff';r.firstChild.style.fontSize='11px'}c.appendChild(r)});
   var last=x.sets[x.sets.length-1]||(prev&&prev[prev.length-1])||{w:'',r:''};
   var add=$('<div class="set" style="grid-template-columns:30px 1fr 1fr 58px auto"><span></span><input type="number" inputmode="decimal" placeholder="'+wl()+'" value="'+(last.w===''?'':toD(last.w))+'"><input type="number" inputmode="numeric" placeholder="reps" value="'+last.r+'">'+typeSel('n')+'<button>Add set</button></div>');
-  add.querySelector('button').onclick=function(){var i=add.querySelectorAll('input'),w=parseFloat(i[0].value),r=parseInt(i[1].value);if(isNaN(w)||!r)return;x.sets.push({w:toK(w),r:r,t:add.querySelector('select').value});mark(ss);startRest(rv(x));save();render()};
+  add.querySelector('button').onclick=function(){var i=add.querySelectorAll('input'),w=parseFloat(i[0].value),r=parseInt(i[1].value);if(isNaN(w)||!r)return;x.sets.push({w:toK(w),r:r,t:add.querySelector('select').value});mark(ss);startRest(rv(x),x.n);save();render()};
   c.appendChild(add);el.appendChild(c)});
  if(ss.ex.length)el.appendChild($('<div class="card"><div class="lab"><span class="mu">Session volume</span><b>'+Math.round(toD(vol)).toLocaleString()+' '+wl()+'</b></div>'+(ss.t0?'<div class="lab" style="margin-top:6px"><span class="mu">Duration</span><b>'+Math.max(1,Math.round((ss.t1-ss.t0)/60000))+' min</b></div>':'')+'</div>'));
  else delete S.sess[date];
@@ -297,12 +297,12 @@ function hint(x,prev){if(!prev||!prev.length)return '';var top=x.tr||12,lo=Math.
  var ws=prev.filter(function(s){return s.w===mw}),mr=Math.min.apply(0,ws.map(function(s){return s.r})),g=grp(x.n),inc=(U()?5/LB:2.5)*(g==='Quads'||g==='Hams & Glutes'?2:1);
  if(mr>=top)return 'Next: '+toD(mw+inc)+' '+wl()+' for '+lo+'+ reps (you hit '+top+' last time)';
  return 'Next: '+toD(mw)+' '+wl()+' for '+Math.min(top,Math.max(mr+1,lo))+'+ reps'}
-var RT={end:0,iv:null},RB=null;
+var RT={end:0,iv:null,n:0,name:''},RB=null;
 function beep(){try{var a=new (window.AudioContext||window.webkitAudioContext)(),o=a.createOscillator(),g=a.createGain();o.connect(g);g.connect(a.destination);g.gain.value=.15;o.frequency.value=880;o.start();o.stop(a.currentTime+.4)}catch(e){}}
-function rbar(){if(RB)return RB;RB=$('<div style="position:fixed;left:8px;right:8px;bottom:calc(60px + env(safe-area-inset-bottom,0px));background:var(--ac);color:#fff;border-radius:12px;padding:8px 12px;display:none;z-index:15;align-items:center;justify-content:space-between"><b id="rtx">Rest</b><span><button class="ghost" data-m>-15</button> <button class="ghost" data-p>+15</button> <button class="ghost" data-s>Skip</button></span></div>');RB.querySelector('[data-m]').onclick=function(){RT.end-=15000;tick()};RB.querySelector('[data-p]').onclick=function(){RT.end+=15000;tick()};RB.querySelector('[data-s]').onclick=stopRest;document.body.appendChild(RB);return RB}
-function tick(){var l=Math.ceil((RT.end-Date.now())/1000);if(l<=0){stopRest();beep();try{navigator.vibrate&&navigator.vibrate([300,150,300])}catch(e){}return}rbar().querySelector('#rtx').textContent='Rest '+Math.floor(l/60)+':'+('0'+l%60).slice(-2)}
-function stopRest(){clearInterval(RT.iv);RT.iv=null;if(RB)RB.style.display='none'}
-function startRest(sec){if(!sec)return;RT.end=Date.now()+sec*1000;rbar().style.display='flex';tick();clearInterval(RT.iv);RT.iv=setInterval(tick,250)}
+function rbar(){if(RB)return RB;RB=$('<div style="position:fixed;left:8px;right:8px;bottom:calc(60px + env(safe-area-inset-bottom,0px));background:var(--ac);color:#fff;border-radius:12px;padding:8px 12px;display:none;z-index:15;align-items:center;justify-content:space-between"><b id="rtx">Rest</b><span><button class="ghost" data-m>-15</button> <button class="ghost" data-p>+15</button> <button class="ghost" data-s>Skip</button></span></div>');RB.querySelector('[data-m]').onclick=function(){RT.end-=15000;reNotif();tick()};RB.querySelector('[data-p]').onclick=function(){RT.end+=15000;reNotif();tick()};RB.querySelector('[data-s]').onclick=stopRest;document.body.appendChild(RB);return RB}
+function tick(){var l=Math.ceil((RT.end-Date.now())/1000);if(l<=1&&RT.n&&!document.hidden)cancelNotif();if(l<=0){stopRest(true);webNotify(RT.name);beep();try{navigator.vibrate&&navigator.vibrate([300,150,300])}catch(e){}return}rbar().querySelector('#rtx').textContent='Rest '+Math.floor(l/60)+':'+('0'+l%60).slice(-2)}
+function stopRest(nat){if(!nat)cancelNotif();clearInterval(RT.iv);RT.iv=null;if(RB)RB.style.display='none'}
+function startRest(sec,name){if(!sec)return;RT.end=Date.now()+sec*1000;RT.name=name||'';cancelNotif();notifRest(sec,name);rbar().style.display='flex';tick();clearInterval(RT.iv);RT.iv=setInterval(tick,250)}
 function copyLast(){var ds=Object.keys(S.sess).filter(function(d){return d<date&&S.sess[d].ex.some(function(x){return x.sets.some(cnt)})}).sort().reverse(),cu=S.sess[date],nm=cu&&cu.day,pk=ds.filter(function(d){return S.sess[d].day===nm})[0]||ds[0];if(!pk)return;
  var ss=S.sess[date]=S.sess[date]||{day:S.sess[pk].day,ex:[]};S.sess[pk].ex.forEach(function(e){if(ss.ex.some(function(x){return x.n===e.n}))return;ss.ex.push({n:e.n,rest:e.rest,sets:e.sets.filter(function(s){return s.t!=='w'}).map(function(s){return{w:s.w,r:s.r,t:s.t,d:0}})})});save();render()}
 function pack(ph){return JSON.stringify({app:'lift-and-fuel',v:1,t:Date.now(),S:Object.assign({},S,{active:null}),photos:ph?PH:[]})}
@@ -415,7 +415,7 @@ function chipCard(title,opts,cur,fn){var c=$('<div class="card"><div class="lab"
 function settingsCard(){var w=$('<div></div>');
  w.appendChild(chipCard('Appearance',[['auto','Auto'],['light','Light'],['dark','Dark']],S.theme||'auto',function(v){S.theme=v;save();applyTheme();render()}));
  w.appendChild(chipCard('Text size',[['normal','Normal'],['large','Large'],['xl','Extra large']],S.fs||'normal',function(v){S.fs=v;save();render()}));
- w.appendChild(backupCard());w.appendChild(exportCard());w.appendChild(snapCard());return w}
+ w.appendChild(notifCard());w.appendChild(backupCard());w.appendChild(exportCard());w.appendChild(snapCard());return w}
 
 function muscleCard(){var n={},from=ago(6);Object.keys(S.sess).forEach(function(d){if(d<from)return;S.sess[d].ex.forEach(function(x){var g=grp(x.n)||'Other',k=x.sets.filter(cnt).length;if(k)n[g]=(n[g]||0)+k})});
  var c=$('<div class="card"><div class="lab"><b>Sets per muscle</b><span class="mu">last 7 days</span></div><div class="mu">Aim for about 10-20 hard sets a week per muscle. Orange is under, green is in range, red is over.</div></div>');
@@ -453,11 +453,24 @@ function editFood(it){var m=modal('<b>Edit food</b><input id="en" style="margin-
  q('[data-x]').onclick=function(){m.remove()};q('[data-ok]').onclick=function(){var v=function(i){return parseFloat(q(i).value)||0},n=q('#en').value.trim(),p=v('#ep'),c=v('#ec'),f=v('#ef'),k=v('#ek')||p*4+c*4+f*9;if(!n||!k)return;it.n=n;it.k=k;it.p=p;it.c=c;it.f=f;it.m=q('#em').value;save();m.remove();render()}}
 function isRest(d){var s=S.sess[d];if(s&&s.ex.some(function(x){return x.sets.some(cnt)}))return false;var dw=new Date(d+'T12:00:00').getDay();if((S.routines||[]).some(function(r){return r.day===dw}))return false;return SPLIT[dw][0]==='Rest'}
 function tgt(d){var g=S.goals,r=isRest(d),a=r?(S.restAdj||0):0;return{k:g.k+a,p:g.p,c:Math.max(0,Math.round(g.c+a/4)),f:g.f,rest:r}}
-function waterCard(){var ml=(S.water||{})[date]||0,goal=Math.max(1000,Math.round((S.prof.w||80)*35/100)*100),fo=U(),
+function waterGoal(d){var p=S.prof,w=p.w||70,f=p.sex==='f',ref=f?2200:3000,base=Math.round((ref+33*w)/2),s=S.sess[d],hrs=.75;
+ if(s&&s.t0&&s.t1>s.t0&&(s.t1-s.t0)<216e5)hrs=Math.min(2,Math.max(.5,(s.t1-s.t0)/36e5));
+ var ex=isRest(d)?0:Math.round(hrs*600/50)*50,hot=S.wHot?500:0,sp=f?(S.wSp==='preg'?200:S.wSp==='lact'?900:0):0,
+ auto=Math.max(1500,Math.min(5000,Math.round((base+ex+hot+sp)/50)*50));
+ return{goal:S.wCustom||auto,auto:auto,ref:ref,base:base,ex:ex,hot:hot,sp:sp,f:f}}
+function waterCard(){var ml=(S.water||{})[date]||0,wg=waterGoal(date),goal=wg.goal,fo=U(),
  disp=function(v){return fo?Math.round(v/29.57)+' fl oz':(v>=1000?(Math.round(v/10)/100)+' L':v+' ml')},
- c=$('<div class="card"><div class="lab"><b>Water</b><span class="mu">'+disp(ml)+' / '+disp(goal)+'</span></div><div class="bar" style="margin-top:8px"><i style="width:'+Math.min(100,ml/goal*100)+'%;background:#3b82c4"></i></div><div class="row"><button class="ghost" data-a>+'+(fo?'8 fl oz':'250 ml')+'</button><button class="ghost" data-b>+'+(fo?'16 fl oz':'500 ml')+'</button><button class="ghost" data-u>Undo</button></div></div>');
+ c=$('<div class="card"><div class="lab"><b>Water</b><span class="mu">'+disp(ml)+' / '+disp(goal)+(S.wCustom?' (custom)':'')+'</span></div><div class="bar" style="margin-top:8px"><i style="width:'+Math.min(100,ml/goal*100)+'%;background:#3b82c4"></i></div><div class="row"><button class="ghost" data-a>+'+(fo?'8 fl oz':'250 ml')+'</button><button class="ghost" data-b>+'+(fo?'16 fl oz':'500 ml')+'</button><button class="ghost" data-u>Undo</button></div><details style="margin-top:8px"><summary class="mu">Goal settings</summary><div data-s style="margin-top:6px"></div></details></div>');
  var add=function(v){S.water=S.water||{};S.water[date]=Math.max(0,(S.water[date]||0)+v);save();render()};
- c.querySelector('[data-a]').onclick=function(){add(fo?237:250)};c.querySelector('[data-b]').onclick=function(){add(fo?473:500)};c.querySelector('[data-u]').onclick=function(){add(fo?-237:-250)};return c}
+ c.querySelector('[data-a]').onclick=function(){add(fo?237:250)};c.querySelector('[data-b]').onclick=function(){add(fo?473:500)};c.querySelector('[data-u]').onclick=function(){add(fo?-237:-250)};
+ var s=c.querySelector('[data-s]');
+ s.innerHTML='<div class="mu">Auto goal '+disp(wg.auto)+': '+disp(wg.base)+' base (average of the National Academies figure for drinks, '+disp(wg.ref)+', and 33 ml per kg of bodyweight)'+(wg.ex?', + '+disp(wg.ex)+' for training':'')+(wg.hot?', + '+disp(wg.hot)+' for hot weather':'')+(wg.sp?', + '+disp(wg.sp)+' extra':'')+'. This counts drinks only, since food supplies about 20% of your water. It is a guide, not a rule: drink to thirst and check that urine is pale. Follow your doctor if you have a condition that limits fluids.'+((S.prof.age||27)<19?' Needs differ for teens, so check with a doctor or dietitian.':'')+'</div>';
+ function chips(label,opts,cur,fn){var w=$('<div class="chips" style="margin:8px 0 0"><span class="mu" style="align-self:center">'+label+'</span></div>');opts.forEach(function(o){var b=$('<button class="chip'+(cur===o[0]?' on':'')+'">'+o[1]+'</button>');b.onclick=function(){fn(o[0])};w.appendChild(b)});s.appendChild(w)}
+ chips('Climate',[[0,'Normal'],[1,'Hot or humid']],S.wHot?1:0,function(v){S.wHot=v;save();render()});
+ if(wg.f)chips('Special',[['','None'],['preg','Pregnant'],['lact','Breastfeeding']],S.wSp||'',function(v){S.wSp=v;save();render()});
+ var r=$('<div class="row" style="margin-top:8px"><input type="number" inputmode="decimal" placeholder="Custom goal ('+(fo?'fl oz':'ml')+')"><button class="ghost" data-c>Set</button><button class="ghost" data-r>Auto</button></div>');
+ r.querySelector('[data-c]').onclick=function(){var v=parseFloat(r.querySelector('input').value)||0;if(v>0){S.wCustom=Math.round(fo?v*29.57:v);save();render()}};
+ r.querySelector('[data-r]').onclick=function(){delete S.wCustom;save();render()};s.appendChild(r);return c}
 function mealCard(items){
  var wrap=$('<div></div>'),yd=yday(date),Y=S.food[yd]||[];
  if(!items.length&&Y.length){var cy=$('<div class="card"><button class="ghost">Copy yesterday\u2019s food ('+Y.length+' items)</button></div>');cy.firstChild.onclick=function(){copyFrom(yd)};wrap.appendChild(cy)}
@@ -589,6 +602,22 @@ function exSearch(ss,have){var w=$('<div style="margin-bottom:12px"><div class="
   LIB.filter(function(x){var n=(x[0]+' '+x[1]+' '+x[2]).toLowerCase();return have.indexOf(x[0])<0&&t.every(function(q){return n.indexOf(q)>=0})}).slice(0,8).forEach(function(x){var r=$('<div class="item" style="cursor:pointer"><span>'+esc(x[0])+' <span class="mu">'+esc(x[1])+'</span></span><b>+</b></div>');r.onclick=function(){add(x[0])};box.appendChild(r)});
   var cu=$('<div class="item" style="cursor:pointer"><span>Add "'+esc(this.value.trim())+'" as custom</span><b>+</b></div>');cu.onclick=function(){add(inp.value)};box.appendChild(cu)};
  w.querySelector('button').onclick=function(){add(inp.value)};return w}
+
+function LN(){return window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.LocalNotifications}
+var NID=4242,NRDY=null;
+function notifSetup(){var ln=LN();if(!ln)return Promise.resolve(false);if(NRDY)return NRDY;
+ NRDY=ln.checkPermissions().then(function(p){return p.display==='granted'?true:ln.requestPermissions().then(function(r){return r.display==='granted'})}).then(function(ok){if(!ok){NRDY=null;return false}return ln.createChannel({id:'rest',name:'Rest timer',description:'Alerts when your rest time ends',importance:5,visibility:1,vibration:true}).catch(function(){}).then(function(){return true})}).catch(function(){NRDY=null;return false});return NRDY}
+function cancelNotif(){var ln=LN();RT.n=0;if(ln)try{ln.cancel({notifications:[{id:NID}]}).catch(function(){})}catch(e){}}
+function notifRest(sec,name){var ln=LN();if(!ln||S.notif===false||sec<2)return;
+ notifSetup().then(function(ok){if(!ok)return;ln.schedule({notifications:[{id:NID,title:'Rest is over',body:name?'Time for your next set of '+name:'Time for your next set',channelId:'rest',schedule:{at:new Date(Date.now()+sec*1000),allowWhileIdle:true}}]}).then(function(){RT.n=1}).catch(function(){})})}
+function reNotif(){if(!RT.end)return;notifRest((RT.end-Date.now())/1000,RT.name)}
+function webNotify(name){try{if(!LN()&&S.notif!==false&&window.Notification&&Notification.permission==='granted'&&document.hidden)new Notification('Rest is over',{body:name?'Time for your next set of '+name:'Time for your next set'})}catch(e){}}
+function notifCard(){var c=$('<div class="card"><div class="lab"><b>Rest timer alert</b></div><div class="mu" style="margin:4px 0 8px">A notification with sound and vibration when your rest ends, even if the screen is off or the app is in the background.</div><div class="chips" style="margin:0"></div><div class="row" style="margin-top:8px"><button class="ghost" data-t>Send a test in 5 seconds</button></div><div class="mu" data-m style="margin-top:6px"></div></div>'),ch=c.children[2],msg=function(t){c.querySelector('[data-m]').textContent=t};
+ [[true,'On'],[false,'Off']].forEach(function(o){var b=$('<button class="chip'+((S.notif!==false)===o[0]?' on':'')+'">'+o[1]+'</button>');b.onclick=function(){S.notif=o[0];save();render()};ch.appendChild(b)});
+ c.querySelector('[data-t]').onclick=function(){var ln=LN();
+  if(ln){notifSetup().then(function(ok){if(!ok){msg('Notifications are blocked. Allow them for this app in your phone settings.');return}ln.schedule({notifications:[{id:NID+1,title:'Test: rest is over',body:'Notifications are working.',channelId:'rest',schedule:{at:new Date(Date.now()+5000),allowWhileIdle:true}}]}).then(function(){msg('Sent. Lock your screen or switch apps and wait 5 seconds.')}).catch(function(){msg('Could not schedule the test.')})});return}
+  if(window.Notification){Notification.requestPermission().then(function(p){if(p!=='granted'){msg('Notifications are blocked in this browser.');return}msg('Switch to another tab and wait 5 seconds.');setTimeout(function(){try{new Notification('Test: rest is over',{body:'Notifications are working.'})}catch(e){}},5000)})}else msg('Notifications are not available here. They work in the installed Android app.')};
+ return c}
 
 function lib(){
  var el=$('<div></div>');el.appendChild($('<h1>Library</h1>'));el.appendChild($('<div class="sub">Browse exercises and add them to the session for the selected date.</div>'));
