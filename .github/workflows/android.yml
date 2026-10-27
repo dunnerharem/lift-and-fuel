@@ -26,6 +26,12 @@ jobs:
       - name: Add permissions
         run: |
           sed -i 's#<application#<uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <uses-permission android:name="android.permission.VIBRATE" />\n    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />\n    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />\n    <application#' android/app/src/main/AndroidManifest.xml
+      - name: Add save-to-folder plugin
+        run: |
+          d=android/app/src/main/java/com/liftfuel/app
+          mkdir -p "$d"
+          cp native/SaveFilePlugin.java "$d/SaveFilePlugin.java"
+          cp native/MainActivity.java "$d/MainActivity.java"
       - name: Add notification icon
         run: |
           mkdir -p android/app/src/main/res/drawable
